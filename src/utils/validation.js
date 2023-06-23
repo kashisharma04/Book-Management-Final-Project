@@ -37,10 +37,10 @@ const isValidPlace = function (input) {
     return placeRegex.test(input);
 };
 
-const isValidISBN = (ISBN) => {
-    const isbnValid = /^(?=(?:\D*\d){5}$)\d+$/g;
-    return isbnValid.test(ISBN);
-  };
+const isValidISBN = (inp) => {
+    const isbnValid = (/^(?=(?:\D*\d){13}(?:(?:\D*\d){3})?$)[\d-]+$/g)
+    return isbnValid.test(inp);
+};
 
 module.exports.isValid = isValid
 module.exports.isValidString = isValidString
