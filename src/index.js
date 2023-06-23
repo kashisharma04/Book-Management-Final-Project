@@ -1,24 +1,28 @@
-const app = require('./app.js')
+const express = require('express');
+const app = express();
+const route = require('../src/routes/route')
+app.use(express.json());
 const mongoose = require('mongoose')
 
 require('dotenv').config();
 
-const { PORT, MONGODB_URL } = process.env
+const {PORT , MONGODB_URL} = process.env;
 
+mongoose.set('strictQuery' , true);
 
-const startServer = async()=>{
-    try {
-        mongoose.set('strictQuery', true)
-        await mongoose.connect(MONGODB_URL,{
-            useNewUrlParser : true,
-            useUnifiedTopology : true
-        })
-        console.log("Database Connected")
-        app.listen(PORT,()=>{
-            console.log(`Server Started At Port ${PORT}`)
-        })
-    } catch (error) {
-        console.log(error)
-    }
-}
-startServer()
+mongoose.connect(
+    MONGODB_URL ,
+    { useNewUrlParser : true }
+)
+.then(()=>{
+    console.log("Server Connected with MongoDb")
+})
+.catch((error)=>{
+    console.log("Error in connection", error.message)
+})
+
+app.use('/',route);
+
+app.listen(PORT , ()=>{
+    console.log(`Server running at ${PORT}`)
+})
