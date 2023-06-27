@@ -1,7 +1,18 @@
 const express = require('express');
 const app = express();
 const route = require('../src/routes/route')
-app.use(express.json());
+const aws = require('../src/aws/aws')
+const multer= require("multer");
+
+const { AppConfig } = require('aws-sdk');
+
+const cors =require("cors")
+
+app.use(express.json())
+app.use(express.urlencoded({extended:true}))
+app.use(cors())
+app.use(multer().any())
+
 const mongoose = require('mongoose')
 
 require('dotenv').config();

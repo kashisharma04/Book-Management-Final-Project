@@ -2,7 +2,7 @@ const router = require("express").Router();
 
 
 const { createUser, loginUser } = require("../controllers/userController");
-const { createBook, getBooks, getBookById, updateBooks, deleteBookById } = require("../controllers/bookController");
+const { createBook, getBooks, getBookById, updateBooks, deleteBookById, createUrl } = require("../controllers/bookController");
 const { reviewBook, updateBookReview, deleteReviewById } = require("../controllers/reviewController");
 const { isAuthenticated, isAuthorized } = require("../middlewares/authMiddleware");
 
@@ -12,7 +12,10 @@ const { isAuthenticated, isAuthorized } = require("../middlewares/authMiddleware
 
 router.post("/register", createUser);
 router.post("/login", loginUser);
-router.post("/books", isAuthenticated, isAuthorized, createBook);
+router.post("/books",  createBook);
+
+router.post("/createUrl",  createUrl);
+
 router.post("/books/:bookId/review", reviewBook);
 
 

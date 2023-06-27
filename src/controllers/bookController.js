@@ -1,10 +1,29 @@
 const bookModel = require("../models/bookModel");
 const userModel = require("../models/userModel");
 const reviewModel = require("../models/reviewModel");
+const aws = require('../aws/aws')
+
 const moment = require("moment");
 const { isValidObjectId } = require("mongoose");
-const {isValid,isValidString,isValidRequestBody,isValidISBN }=require("../utils/validation")
+const { isValid, isValidString, isValidRequestBody, isValidISBN } = require("../utils/validation")
 const { isAuthenticated, isAuthorized } = require("../middlewares/authMiddleware");
+const { uploadFile} = require('../aws/aws')
+
+// AWS
+const createUrl= async function(req,res){
+    try{
+    let files= req.files
+    if(files && files.length>0){
+        let uploadedFileURL= await uploadFile( files[0])
+        return res.status(201).send({ staus: true, data:uploadedFileURL })
+    }
+    else{
+       return  res.status(400).send({ msg: "No file found" })
+    }
+}catch(err){
+    return  res.status(500).send({ msg:err.message })
+}
+} 
 
 
 // ===================================== Create Books =====================================================//
@@ -13,7 +32,7 @@ const { isAuthenticated, isAuthorized } = require("../middlewares/authMiddleware
 
 const createBook = async function (req, res) {
     try {
-        let body = req.body;
+        let data = req.body;
         let {
             title,
             excerpt,
@@ -21,28 +40,29 @@ const createBook = async function (req, res) {
             category,
             subcategory,
             releasedAt
-        } = body;
+            
+        } = data;
 
-        if (!isValid(title) || !isValid(excerpt) || !isValid(ISBN) || !isValid(subcategory) || !isValid(category) || !isValid(releasedAt)) {
-            return res.status(400).send({
-                status: false,
-                message: "Please Provide All valid Field"
-            });
-        }
+        // if (!isValid(title) || !isValid(excerpt) || !isValid(ISBN) || !isValid(subcategory) || !isValid(category) || !isValid(releasedAt)) {
+        //     return res.status(400).send({
+        //         status: false,
+        //         message: "Please Provide All valid Field"
+        //     });
+        // }
 
-        if (!isValidRequestBody(title) || !isValidRequestBody(excerpt) || !isValidRequestBody(ISBN) || !isValidRequestBody(subcategory) || !isValidRequestBody(category) || !isValidRequestBody(releasedAt)) {
-            return res.status(400).send({
-                status: false,
-                message: "Please Provide All valid Field"
-            });
-        }
+        // if (!isValidRequestBody(title) || !isValidRequestBody(excerpt) || !isValidRequestBody(ISBN) || !isValidRequestBody(subcategory) || !isValidRequestBody(category) || !isValidRequestBody(releasedAt)) {
+        //     return res.status(400).send({
+        //         status: false,
+        //         message: "Please Provide All valid Field"
+        //     });
+        // }
 
-        if (!isValidISBN(ISBN)) {
-            return res.status(400).send({
-                status: false,
-                message: " Invalid ISBN number it should contain only 13 digits"
-            });
-        }
+        // if (!isValidISBN(ISBN)) {
+        //     return res.status(400).send({
+        //         status: false,
+        //         message: " Invalid ISBN number it should contain only 13 digits"
+        //     });
+        // }
 
         const unique = await bookModel.findOne({
             $or: [{
@@ -71,8 +91,16 @@ const createBook = async function (req, res) {
             });
 
         }
+        
+        let bookData = data
+        //bookData['bookCover'] = uploadedFileURL;
+        //console.log(uploadedFileURL)
+        let createBook = await bookModel.create(bookData);
 
-        const bookList = await bookModel.create(body);
+        // let { __v, ...otherData } = createBook._doc;
+
+        return res.status(201).send({ status: true, data: createBook });
+        // const bookList = await bookModel.create(body);
 
         res.status(201).send({
             status: true,
@@ -129,38 +157,38 @@ const getBooks = async function (req, res) {
 
 const getBookById = async function (req, res) {
     try {
-      const bookId = req.params.bookId;
-  
-      if (!isValidObjectId(bookId)) {
-        return res.status(400).send({ status: false, message: "Please provide a valid book ID." });
-      }
-  
-      const getBookData = await bookModel
-        .findOne({ _id: bookId, isDeleted: false })
-        .select({ __v: 0 });
-  
-      if (!getBookData) {
-        return res.status(404).send({ status: false, message: "No book exists with this ID or it might be deleted." });
-      }
-  
-      const reviewData = await reviewModel
-        .find({ bookId, isDeleted: false })
-        .select({ _id: 1, bookId: 1, reviewedBy: 1, reviewedAt: 1, rating: 1, review: 1 });
-  
-      const reviewCount = reviewData.length;
-  
-      const bookDetails = {
-        ...getBookData._doc,
-        reviewsData: reviewData,
-        reviews: reviewCount
-      };
-  
-      return res.status(200).send({ status: true, message: 'Book Details', data: bookDetails });
+        const bookId = req.params.bookId;
+
+        if (!isValidObjectId(bookId)) {
+            return res.status(400).send({ status: false, message: "Please provide a valid book ID." });
+        }
+
+        const getBookData = await bookModel
+            .findOne({ _id: bookId, isDeleted: false })
+            .select({ __v: 0 });
+
+        if (!getBookData) {
+            return res.status(404).send({ status: false, message: "No book exists with this ID or it might be deleted." });
+        }
+
+        const reviewData = await reviewModel
+            .find({ bookId, isDeleted: false })
+            .select({ _id: 1, bookId: 1, reviewedBy: 1, reviewedAt: 1, rating: 1, review: 1 });
+
+        const reviewCount = reviewData.length;
+
+        const bookDetails = {
+            ...getBookData._doc,
+            reviewsData: reviewData,
+            reviews: reviewCount
+        };
+
+        return res.status(200).send({ status: true, message: 'Book Details', data: bookDetails });
     } catch (error) {
-      return res.status(500).send({ status: false, message: error.message });
+        return res.status(500).send({ status: false, message: error.message });
     }
-  };
-  
+};
+
 
 
 
@@ -183,8 +211,8 @@ const updateBooks = async function (req, res) {
 
             let updateData = {};
 
-            if(title){
-            if (!isValid(title)) {
+            if (title) {
+                if (!isValid(title)) {
                     return res.status(400).send({ status: false, message: "Title is not Valid." });
                 }
 
@@ -195,17 +223,17 @@ const updateBooks = async function (req, res) {
                 }
 
                 updateData.title = title;
-            }    
+            }
 
-            if(excerpt){
-            if (!isValid(excerpt)) {
+            if (excerpt) {
+                if (!isValid(excerpt)) {
                     return res.status(400).send({ status: false, message: "Excerpt is not Valid" });
                 }
                 updateData.excerpt = excerpt;
             }
 
-            if(ISBN){    
-            if (!isValid(ISBN)) {
+            if (ISBN) {
+                if (!isValid(ISBN)) {
                     return res.status(400).send({ status: false, message: "ISBN is not valid" });
                 }
 
@@ -220,7 +248,7 @@ const updateBooks = async function (req, res) {
                 }
 
                 updateData.ISBN = ISBN;
-            }    
+            }
 
             if (releasedAt) {
 
@@ -286,4 +314,4 @@ const deleteBookById = async function (req, res) {
 
 
 
-module.exports = { createBook, getBooks, getBookById, updateBooks, deleteBookById };
+module.exports = { createBook, getBooks, getBookById, updateBooks, deleteBookById, createUrl };
